@@ -36,7 +36,7 @@ public class RoomScale : MonoBehaviour
     /// <summary>
     /// Camera's parent object to move to zero height (may be not zero in design time)
     /// </summary>
-    [Tooltip("Camera's parent object to move to zero height \n(may be not zero in design time)")]
+    [Tooltip("Camera's parent object to move to zero height when room scale is on")]
     public Transform CameraParentToMoveToZero;
 
     private bool previousValue = true;
@@ -44,6 +44,7 @@ public class RoomScale : MonoBehaviour
     private Dictionary<Transform, Vector3> relativePositions;
 
     private bool doRecenter = false;
+    private bool firstTimeActiveLocator = true;
 
     private void Awake()
     {
@@ -54,27 +55,22 @@ public class RoomScale : MonoBehaviour
         relativePositions = new Dictionary<Transform, Vector3>();
         if (NeedRoomScale && CameraRelativeObjects != null && CameraRelativeObjects.Length > 0)
         {
-
             foreach (var t in CameraRelativeObjects)
             {
                 var posDelta = t.position - cameraPos;
                 relativePositions.Add(t, posDelta);
             }
         }
-
-        if (CameraParentToMoveToZero != null)
-        {
-            CameraParentToMoveToZero.localPosition = new Vector3(CameraParentToMoveToZero.localPosition.x, 0, CameraParentToMoveToZero.localPosition.z);
-        }
     }
 
     private void Start()
     {
-        previousValue = UnityEngine.XR.XRDevice.SetTrackingSpaceType(NeedRoomScale ? UnityEngine.XR.TrackingSpaceType.RoomScale : UnityEngine.XR.TrackingSpaceType.Stationary);
         UnityEngine.XR.WSA.WorldManager.OnPositionalLocatorStateChanged += WorldManager_OnPositionalLocatorStateChanged;
+        previousValue = UnityEngine.XR.XRDevice.SetTrackingSpaceType(NeedRoomScale ? UnityEngine.XR.TrackingSpaceType.RoomScale : UnityEngine.XR.TrackingSpaceType.Stationary);
 
         if (previousValue == NeedRoomScale)
         {
+            UpdateCamera();
             firstEstablishedTracking = true;
             SetInitialRelativePositions();
             floorObject.SetActive(NeedRoomScale);
@@ -90,6 +86,8 @@ public class RoomScale : MonoBehaviour
             previousValue = UnityEngine.XR.XRDevice.SetTrackingSpaceType(NeedRoomScale ? UnityEngine.XR.TrackingSpaceType.RoomScale : UnityEngine.XR.TrackingSpaceType.Stationary);
 
             CheckForRecenter();
+
+            UpdateCamera();
         }
     }
 
@@ -119,6 +117,8 @@ public class RoomScale : MonoBehaviour
 
             CheckForRecenter();
 
+            UpdateCamera();
+
             SetInitialRelativePositions();
         }
     }
@@ -144,6 +144,18 @@ public class RoomScale : MonoBehaviour
             doRecenter = false;
             UnityEngine.XR.InputTracking.Recenter();
         }
+    }
 
+    private void UpdateCamera()
+    {
+        if (firstTimeActiveLocator)
+        {
+            firstTimeActiveLocator = false;
+
+            if (CameraParentToMoveToZero != null && UnityEngine.XR.XRDevice.GetTrackingSpaceType() == UnityEngine.XR.TrackingSpaceType.RoomScale)
+            {
+                CameraParentToMoveToZero.localPosition = new Vector3(CameraParentToMoveToZero.localPosition.x, 0, CameraParentToMoveToZero.localPosition.z);
+            }
+        }
     }
 }
